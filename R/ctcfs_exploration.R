@@ -20,6 +20,8 @@ annot <- annot %>% semi_join(genes)
 ctcfs <- read_tsv("../data/non_gene_overlaping_ctcfbs.tsv", 
                   col_types = cols(col_character(), col_integer(), col_integer()))
 
+getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
 gene_counts <- annot %>% group_by(chr) %>% tally()
 gene_counts$chr <- factor(gene_counts$chr, levels = as.character(c(seq(1:22), "X")))
 
@@ -35,8 +37,6 @@ dev.off()
 
 ctcfs_counts <- ctcfs %>% group_by(chr) %>% tally()
 ctcfs_counts$chr <- factor(ctcfs_counts$chr, levels = as.character(c(seq(1:22), "X")))
-
-getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
 png(filename = "../figures/ctcf_count.png", width = 1200, height = 600)
 ggplot(ctcfs_counts, aes(x = chr, y = n, fill = chr)) +
@@ -60,11 +60,13 @@ gb_ctfs <- parallel::mclapply(X = chrs, mc.cores = 5, FUN = function(c){
     e <- unlist(cs_in_c[i+1, "start"])
     
     ngenes <- gs_in_c %>% filter(start >= s & end <= e) %>% nrow()
-    return(list(i = i, ngenes = ngenes))
+    return(list(i = i, ngenes = ngenes, dist = e - s))
   })
   genes <- bind_rows(genes)
-  ngenes <- gs_in_c %>% filter(start >= max(cs_in_c$end) & end <= max(gs_in_c$end)) %>% nrow()
-  genes <- genes %>% add_row(i = nrow(cs_in_c), ngenes = ngenes)
+  s <- max(cs_in_c$end)
+  e <- max(gs_in_c$end)
+  ngenes <- gs_in_c %>% filter(start >= s & end <= e) %>% nrow()
+  genes <- genes %>% add_row(i = nrow(cs_in_c), ngenes = ngenes, dist = e - s)
   genes$cum_sum <- cumsum(genes$ngenes)
   cs_in_c <- bind_cols(cs_in_c, genes)
   
@@ -100,7 +102,7 @@ ggplot(ctcfs_counts, aes(x = chr, y = n)) +
 dev.off()
 
 noceros <- g_betw %>% filter(ngenes != 0) 
-png(filename = "../figures/ctcf_genes_between.png", width = 1200, height = 600)
+png(filename = "../figures/ctcf_genes_between_nonempty.png", width = 1200, height = 600)
 ggplot(noceros, aes(x = chr, y = ngenes, fill = chr)) +
   geom_boxplot() +
   theme_few(base_size = 20) +
@@ -110,8 +112,21 @@ ggplot(noceros, aes(x = chr, y = ngenes, fill = chr)) +
   scale_fill_manual(values = getPalette(23))
 dev.off()
 
+png(filename = "../figures/ctcf_distance_all.png", width = 1200, height = 600)
+ggplot(g_betw, aes(x = chr, y = dist, fill = chr)) +
+  geom_boxplot() +
+  theme_few(base_size = 20) +
+  theme(legend.position = "none") +
+  ylab("Distance between CTCF binding sites") +
+  xlab("Chromosome") +
+  ylim(0, 5e5) +
+  scale_fill_manual(values = getPalette(23))
+dev.off()
+
+
 ##### Cumulative sum to remove ctcfs with no genes
 unique_ctcfs <- gb_ctfs %>% distinct(chr, cum_sum, .keep_all = TRUE)
 unique_ctcfs$id <- paste0("CTCF", stringi::stri_pad_left(rownames(unique_ctcfs), 5, 0))
-unique_ctcfs <- unique_ctcfs %>% select(id, chr, start, end, i, ngenes, cum_sum)
+unique_ctcfs <- unique_ctcfs %>% select(id, chr:cum_sum)
 write_tsv(unique_ctcfs, path = "../data/significant_ctcfs.tsv")
+
