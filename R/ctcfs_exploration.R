@@ -65,6 +65,7 @@ gb_ctfs <- parallel::mclapply(X = chrs, mc.cores = 5, FUN = function(c){
   genes <- bind_rows(genes)
   ngenes <- gs_in_c %>% filter(start >= max(cs_in_c$end) & end <= max(gs_in_c$end)) %>% nrow()
   genes <- genes %>% add_row(i = nrow(cs_in_c), ngenes = ngenes)
+  genes$cum_sum <- cumsum(genes$ngenes)
   cs_in_c <- bind_cols(cs_in_c, genes)
   
   return(cs_in_c)
@@ -108,3 +109,9 @@ ggplot(noceros, aes(x = chr, y = ngenes, fill = chr)) +
   xlab("Chromosome") +
   scale_fill_manual(values = getPalette(23))
 dev.off()
+
+##### Cumulative sum to remove ctcfs with no genes
+unique_ctcfs <- gb_ctfs %>% distinct(chr, cum_sum, .keep_all = TRUE)
+unique_ctcfs$id <- paste0("CTCF", stringi::stri_pad_left(rownames(unique_ctcfs), 5, 0))
+unique_ctcfs <- unique_ctcfs %>% select(id, chr, start, end, i, ngenes, cum_sum)
+write_tsv(unique_ctcfs, path = "../data/significant_ctcfs.tsv")
