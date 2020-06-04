@@ -17,6 +17,7 @@ annot <- annot %>% semi_join(genes)
 
 ctcfs <- read_tsv("../data/non_gene_overlaping_ctcfbs.tsv", 
                   col_types = cols(col_character(), col_integer(), col_integer()))
+ctcfs <- ctcfs[!duplicated(ctcfs), ]
 
 getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
@@ -121,10 +122,10 @@ ggplot(g_betw, aes(x = chr, y = dist, fill = chr)) +
   scale_fill_manual(values = getPalette(23))
 dev.off()
 
+write_tsv(gb_ctfs, path = "../data/all_ctcfs.tsv")
 
 ##### Cumulative sum to remove ctcfs with no genes
 unique_ctcfs <- gb_ctfs %>% distinct(chr, cum_sum, .keep_all = TRUE)
 unique_ctcfs$id <- paste0("CTCF", stringi::stri_pad_left(rownames(unique_ctcfs), 5, 0))
 unique_ctcfs <- unique_ctcfs %>% select(id, chr:cum_sum)
 write_tsv(unique_ctcfs, path = "../data/significant_ctcfs.tsv")
-
