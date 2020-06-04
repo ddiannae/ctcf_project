@@ -4,13 +4,12 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 
-setwd("~/Workspace/ctcf_project/R/")
-annot <- read_tsv("/labs/csbig/subtipos_mama_2018/Biomart_EnsemblG94_GRCh38_p12_karyotype.txt",
+annot <- read_tsv("../data/Biomart_EnsemblG94_GRCh38_p12_karyotype.txt",
                   col_names = c("ensemblID", "chr", "start", "end", "karyoband"),
                   col_types = cols(col_character(), col_character(), col_integer(), 
                                    col_integer(), col_character()),
                   skip = 1)
-genes <- read_tsv("/labs/csbig/subtipos_mama_2018/genes_in_exp_matrix.txt", col_names = "ensemblID")
+genes <- read_tsv("../data/genes_in_exp_matrix.txt", col_names = "ensemblID")
 
 annot <- annot %>% semi_join(genes)
 ctcfs <- read_csv("../data/ctcfbs.csv", 
